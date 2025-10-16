@@ -1,0 +1,277 @@
+:root {
+  --header: #f4a261;
+  --border: #cfcfcf;
+  --row: #ffffff;
+  --rowAlt: #fafafa;
+  --on: #c7e9c0;
+  --prep: #fde68a;
+  --shared: #add8e6;
+  --highlight: #39ff14;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: system-ui, Arial, sans-serif;
+  margin: 0;
+  background: #f5f6f8;
+  color: #111;
+}
+#root {
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.bar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.bar button,
+.bar select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+.legend {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #999;
+  margin-right: 6px;
+  border-radius: 3px;
+}
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  margin-top: 10px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+th.dish {
+  background: var(--header);
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+}
+tr.shared td {
+  background: var(--shared) !important;
+}
+tr.row-hi td {
+  background: var(--highlight) !important;
+}
+tr:nth-child(even) td.body {
+  background: var(--rowAlt);
+}
+td.body {
+  background: var(--row);
+}
+td.name {
+  font-weight: 600;
+  cursor: pointer;
+}
+td.toggle {
+  cursor: pointer;
+  text-align: center;
+  width: 90px;
+}
+td.toggle.on {
+  background: var(--on);
+}
+td.toggle.prep {
+  background: var(--prep);
+}
+td.notes input {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+td.star {
+  width: 48px;
+  text-align: center;
+}
+td.star button {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+@media print {
+  .bar,
+  .legend,
+  .overlay {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  th.dish {
+    color: #000;
+  }
+}
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+.modal {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  width: min(900px, 95vw);
+  max-height: 90vh;
+  overflow: auto;
+}
+.modal header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 800;
+}
+.modal section {
+  padding: 12px 14px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.row input[type='text'] {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+.row button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+.comp-list {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+}
+.comp-empty {
+  color: #666;
+  font-style: italic;
+}
+.muted {
+  color: #555;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.grid .box {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+.checkbox {
+  margin-right: 6px;
+}
+body.compact {
+  font-size: 11px;
+}
+body.compact th,
+body.compact td {
+  padding: 2px 4px;
+  font-size: 11px;
+}
+body.compact .bar button,
+body.compact .bar select {
+  padding: 2px 4px;
+  font-size: 11px;
+}
+body.compact .legend {
+  font-size: 9px;
+  gap: 4px;
+  padding: 2px 4px;
+}
+body.compact .card {
+  margin-top: 2px;
+  box-shadow: none;
+}
+body.compact table {
+  font-size: 11px;
+}
+body.compact .modal section {
+  padding: 6px;
+  font-size: 11px;
+}
+body.compact pre,
+body.compact textarea,
+body.compact input {
+  font-size: 11px;
+}
+@media print {
+  body.compact {
+    font-size: 9px;
+  }
+  body.compact th,
+  body.compact td {
+    padding: 1px 2px;
+    font-size: 9px;
+  }
+  .bar,
+  .legend,
+  .overlay {
+    display: none !important;
+  }
+  .card {
+    margin-top: 0;
+    box-shadow: none;
+  }
+  tr,
+  .card,
+  th.dish {
+    page-break-inside: avoid;
+  }
+}
+.missing-recipe {
+  color: red;
+  font-weight: bold;
+  margin-left: 4px;
+}

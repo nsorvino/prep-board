@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/db.ts","./src/env.d.ts","./src/main.tsx","./src/supabase.ts","./src/types.ts","./src/components/legend.tsx","./src/components/table.tsx","./src/hooks/userowstate.ts"],"version":"5.9.3"}

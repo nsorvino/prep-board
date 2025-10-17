@@ -39,6 +39,9 @@ export function Legend() {
       <span>
         <span className="shared-indicator"></span> Shared item
       </span>
+      <span style={{ color: '#888', fontSize: '11px' }}>
+        Click dish header to edit, item to open recipe.
+      </span>
     </div>
   );
 }

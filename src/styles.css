@@ -6,7 +6,7 @@
   --on: #c7e9c0;
   --prep: #fde68a;
   --shared: #add8e6;
-  --highlight: #39ff14;
+  --highlight: #a8e6a3;
 }
 * {
   box-sizing: border-box;
@@ -81,9 +81,7 @@ th.dish {
   font-size: 15px;
   cursor: pointer;
 }
-tr.shared td {
-  background: var(--shared) !important;
-}
+/* Remove shared row background - now using circle indicator */
 tr.row-hi td {
   background: var(--highlight) !important;
 }
@@ -103,10 +101,10 @@ td.toggle {
   width: 90px;
 }
 td.toggle.on {
-  background: var(--on);
+  border: 2px solid #dc2626 !important;
 }
 td.toggle.prep {
-  background: var(--prep);
+  border: 2px solid #dc2626 !important;
 }
 td.notes input {
   width: 100%;
@@ -269,6 +267,16 @@ body.compact input {
   th.dish {
     page-break-inside: avoid;
   }
+}
+.shared-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--shared);
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+  border: 1px solid #4a90e2;
 }
 .missing-recipe {
   color: red;

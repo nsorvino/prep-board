@@ -4,17 +4,17 @@ import type { DishRow, ItemRow, RowStateRow, ToggleState } from './types';
 
 export async function fetchAll() {
   const [dishes, items, states] = await Promise.all([
-    sb.from('dishes').select('*').order('created_at', { ascending: true }),
-    sb.from('items').select('*').order('position', { ascending: true }),
+    sb.from('dishes').select('*'),
+    sb.from('items').select('id,dish_id,name,position,recipe'),
     sb.from('row_state').select('*'),
   ]);
   if (dishes.error) throw dishes.error;
   if (items.error) throw items.error;
-  if (states.error) throw states.error;
+  // row_state is optional; ignore errors so it doesn't block rendering
   return {
     dishes: dishes.data as DishRow[],
     items: items.data as ItemRow[],
-    states: states.data as RowStateRow[],
+    states: states.error ? ([] as RowStateRow[]) : (states.data as RowStateRow[]),
   };
 }
 
@@ -32,6 +32,55 @@ export async function insertItem(dish_id: string, name: string, position = 0) {
     .single();
   if (error) throw error;
   return data as ItemRow;
+}
+
+export async function updateItemRecipe(item_id: string, recipe: string) {
+  const { data, error } = await sb
+    .from('items')
+    .update({ recipe })
+    .eq('id', item_id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ItemRow;
+}
+
+export async function updateDish(dish_id: string, name: string) {
+  const { data, error } = await sb
+    .from('dishes')
+    .update({ name })
+    .eq('id', dish_id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as DishRow;
+}
+
+export async function deleteDish(dish_id: string) {
+  const { error } = await sb
+    .from('dishes')
+    .delete()
+    .eq('id', dish_id);
+  if (error) throw error;
+}
+
+export async function updateItem(item_id: string, name: string, position?: number) {
+  const { data, error } = await sb
+    .from('items')
+    .update({ name, position })
+    .eq('id', item_id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ItemRow;
+}
+
+export async function deleteItem(item_id: string) {
+  const { error } = await sb
+    .from('items')
+    .delete()
+    .eq('id', item_id);
+  if (error) throw error;
 }
 
 export async function upsertRowState(params: {

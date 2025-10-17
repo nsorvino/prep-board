@@ -8,6 +8,7 @@ export interface ItemRow {
   dish_id: string;
   name: string;
   position?: number;
+  recipe?: string | null;
 } // DB row (items)
 
 export interface RowStateRow {

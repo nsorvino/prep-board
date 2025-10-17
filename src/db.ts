@@ -57,10 +57,7 @@ export async function updateDish(dish_id: string, name: string) {
 }
 
 export async function deleteDish(dish_id: string) {
-  const { error } = await sb
-    .from('dishes')
-    .delete()
-    .eq('id', dish_id);
+  const { error } = await sb.from('dishes').delete().eq('id', dish_id);
   if (error) throw error;
 }
 
@@ -76,10 +73,7 @@ export async function updateItem(item_id: string, name: string, position?: numbe
 }
 
 export async function deleteItem(item_id: string) {
-  const { error } = await sb
-    .from('items')
-    .delete()
-    .eq('id', item_id);
+  const { error } = await sb.from('items').delete().eq('id', item_id);
   if (error) throw error;
 }
 

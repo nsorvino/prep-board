@@ -8,7 +8,12 @@ export function Legend() {
         <i className="swatch" style={{ background: 'var(--prep)' }} aria-hidden /> Prep
       </span> */}
       <span>
-        <i className="swatch" style={{ border: '2px solid #dc2626', background: 'var(--on)' }} aria-hidden /> On Hand / Prep
+        <i
+          className="swatch"
+          style={{ border: '2px solid #dc2626', background: 'var(--on)' }}
+          aria-hidden
+        />{' '}
+        On Hand / Prep
       </span>
       <span>
         <i
@@ -34,7 +39,10 @@ export function Legend() {
         Dish header
       </span>
       <span>
-        <span className="missing-recipe" title="No recipe">⚠️</span> No recipe
+        <span className="missing-recipe" title="No recipe">
+          ⚠️
+        </span>{' '}
+        No recipe
       </span>
       <span>
         <span className="shared-indicator"></span> Shared item

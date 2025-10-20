@@ -9,6 +9,7 @@ import {
   deleteDish as deleteDishFromDb,
   updateItem,
   deleteItem,
+  subscribeToChanges,
 } from './db';
 import { Legend } from './components/Legend';
 
@@ -94,6 +95,7 @@ export default function App() {
   const [scale, setScale] = useState(1);
   const [notesModal, setNotesModal] = useState<{ dishId: string; item: string } | null>(null);
   const [draftNote, setDraftNote] = useState('');
+  const [realtimeNotification, setRealtimeNotification] = useState<string | null>(null);
 
   // ---------- Edit dish modal ----------
   const [editModal, setEditModal] = useState<{
@@ -145,6 +147,99 @@ export default function App() {
         console.error('Failed to load from Supabase', err);
       }
     })();
+  }, []);
+
+  // Real-time subscriptions
+  useEffect(() => {
+    const unsubscribe = subscribeToChanges(
+      // Handle dish changes
+      (payload) => {
+        console.log('Dish change:', payload);
+        if (payload.eventType === 'INSERT') {
+          const newDish = payload.new;
+          setDishes((prev) => [...prev, { id: newDish.id, name: newDish.name, items: [] }]);
+          setRealtimeNotification(`New dish "${newDish.name}" added`);
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedDish = payload.new;
+          setDishes((prev) =>
+            prev.map((d) => (d.id === updatedDish.id ? { ...d, name: updatedDish.name } : d)),
+          );
+          setRealtimeNotification(`Dish "${updatedDish.name}" updated`);
+        } else if (payload.eventType === 'DELETE') {
+          const deletedDish = payload.old;
+          setDishes((prev) => prev.filter((d) => d.id !== deletedDish.id));
+          setRealtimeNotification(`Dish "${deletedDish.name}" deleted`);
+        }
+        setTimeout(() => setRealtimeNotification(null), 3000);
+      },
+      // Handle item changes
+      (payload) => {
+        console.log('Item change:', payload);
+        if (payload.eventType === 'INSERT') {
+          const newItem = payload.new;
+          setDishes((prev) =>
+            prev.map((d) =>
+              d.id === newItem.dish_id
+                ? { ...d, items: [...d.items, newItem.name] }
+                : d,
+            ),
+          );
+          const k = rowKey(newItem.dish_id, newItem.name);
+          setItemMeta((prev) => ({
+            ...prev,
+            [k]: { id: newItem.id, recipe: newItem.recipe ?? null },
+          }));
+          setRealtimeNotification(`New item "${newItem.name}" added`);
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedItem = payload.new;
+          const oldItem = payload.old;
+          // Update item name if changed
+          if (oldItem.name !== updatedItem.name) {
+            setDishes((prev) =>
+              prev.map((d) =>
+                d.id === updatedItem.dish_id
+                  ? {
+                      ...d,
+                      items: d.items.map((item) =>
+                        item === oldItem.name ? updatedItem.name : item,
+                      ),
+                    }
+                  : d,
+              ),
+            );
+            setRealtimeNotification(`Item "${oldItem.name}" renamed to "${updatedItem.name}"`);
+          }
+          // Update recipe
+          const k = rowKey(updatedItem.dish_id, updatedItem.name);
+          setItemMeta((prev) => ({
+            ...prev,
+            [k]: { id: updatedItem.id, recipe: updatedItem.recipe ?? null },
+          }));
+          if (oldItem.recipe !== updatedItem.recipe) {
+            setRealtimeNotification(`Recipe for "${updatedItem.name}" updated`);
+          }
+        } else if (payload.eventType === 'DELETE') {
+          const deletedItem = payload.old;
+          setDishes((prev) =>
+            prev.map((d) =>
+              d.id === deletedItem.dish_id
+                ? { ...d, items: d.items.filter((item) => item !== deletedItem.name) }
+                : d,
+            ),
+          );
+          const k = rowKey(deletedItem.dish_id, deletedItem.name);
+          setItemMeta((prev) => {
+            const newMeta = { ...prev };
+            delete newMeta[k];
+            return newMeta;
+          });
+          setRealtimeNotification(`Item "${deletedItem.name}" deleted`);
+        }
+        setTimeout(() => setRealtimeNotification(null), 3000);
+      },
+    );
+
+    return unsubscribe;
   }, []);
 
   // Shared components set
@@ -563,6 +658,27 @@ export default function App() {
 
       {/* --- Legend --- */}
       <Legend />
+
+      {/* --- Real-time Notification --- */}
+      {realtimeNotification && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            background: '#4CAF50',
+            color: 'white',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            zIndex: 1000,
+            fontSize: '14px',
+            fontWeight: '500',
+          }}
+        >
+          🔄 {realtimeNotification}
+        </div>
+      )}
 
       {/* --- Tables (one per dish) --- */}
       <div className="card">

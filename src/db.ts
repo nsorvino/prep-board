@@ -103,14 +103,19 @@ export async function upsertRowState(params: {
   return data as RowStateRow;
 }
 
-export function subscribeRowState(onChange: (row: RowStateRow) => void) {
-  const channel = sb
-    .channel('row_state_live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'row_state' }, (payload) =>
-      onChange(payload.new as RowStateRow),
-    )
+export function subscribeToChanges(onDishChange: (payload: any) => void, onItemChange: (payload: any) => void) {
+  const dishesChannel = sb
+    .channel('dishes_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'dishes' }, onDishChange)
     .subscribe();
+
+  const itemsChannel = sb
+    .channel('items_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, onItemChange)
+    .subscribe();
+
   return () => {
-    sb.removeChannel(channel);
+    sb.removeChannel(dishesChannel);
+    sb.removeChannel(itemsChannel);
   };
 }

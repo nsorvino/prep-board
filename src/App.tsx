@@ -10,6 +10,8 @@ import {
   updateItem,
   deleteItem,
   subscribeToChanges,
+  syncRowState,
+  initializeRowStates,
 } from './db';
 import { Legend } from './components/Legend';
 
@@ -143,6 +145,9 @@ export default function App() {
         setDishes(list);
         setItemMeta(meta);
         localStorage.setItem(LS.dishesCache, JSON.stringify(list));
+        
+        // Initialize row_state entries for all items
+        await initializeRowStates();
       } catch (err) {
         console.error('Failed to load from Supabase', err);
       }
@@ -237,10 +242,63 @@ export default function App() {
         }
         setTimeout(() => setRealtimeNotification(null), 3000);
       },
+      // Handle row state changes
+      (payload) => {
+        console.log('Row state change received:', payload);
+        const rowState = payload.new;
+        
+        // Find the item name from item_id
+        const itemEntry = Object.entries(itemMeta).find(([_, meta]) => meta.id === rowState.item_id);
+        if (!itemEntry) {
+          console.log('Could not find item for row state change:', rowState.item_id);
+          return;
+        }
+        
+        const [itemKey, _] = itemEntry;
+        const [dishId, itemName] = itemKey.split('|');
+        
+        console.log('Updating row state for:', itemName, 'in dish:', dishId);
+        
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          // Update notes
+          setNotes((prev) => ({ ...prev, [itemKey]: rowState.note || '' }));
+          
+          // Update toggle states
+          setCells((prev) => ({
+            ...prev,
+            [`${itemKey}|on`]: rowState.state === 'on',
+            [`${itemKey}|prep`]: rowState.state === 'prep',
+          }));
+          
+          // Update highlight state
+          setRowHi((prev) => ({ ...prev, [itemKey]: rowState.starred || false }));
+          
+          setRealtimeNotification(`Row state updated for "${itemName}"`);
+        } else if (payload.eventType === 'DELETE') {
+          // Clean up local state
+          setNotes((prev) => {
+            const newNotes = { ...prev };
+            delete newNotes[itemKey];
+            return newNotes;
+          });
+          setCells((prev) => {
+            const newCells = { ...prev };
+            delete newCells[`${itemKey}|on`];
+            delete newCells[`${itemKey}|prep`];
+            return newCells;
+          });
+          setRowHi((prev) => {
+            const newRowHi = { ...prev };
+            delete newRowHi[itemKey];
+            return newRowHi;
+          });
+        }
+        setTimeout(() => setRealtimeNotification(null), 3000);
+      },
     );
 
     return unsubscribe;
-  }, []);
+  }, [itemMeta]);
 
   // Shared components set
   const sharedSet = useMemo(() => {
@@ -277,7 +335,16 @@ export default function App() {
     try {
       const drow = await insertDish(name);
       for (const [i, name] of comps.entries()) {
-        await insertItem(drow.id, name, i);
+        const itemRow = await insertItem(drow.id, name, i);
+        // Create row_state entry for the new item
+        await syncRowState({
+          dish_id: drow.id,
+          item_id: itemRow.id,
+          notes: '',
+          on_hand: false,
+          prep: false,
+          highlighted: false,
+        });
       }
       const newDish: Dish = { id: drow.id, name, items: comps };
       setDishes((ds) => [...ds, newDish]);
@@ -303,17 +370,70 @@ export default function App() {
   };
 
   // ------- Row handlers -------
-  const toggleCell = (dishId: string, item: string, kind: 'on' | 'prep') => {
+  const toggleCell = async (dishId: string, item: string, kind: 'on' | 'prep') => {
     const k = `${rowKey(dishId, item)}|${kind}`;
-    setCells((s) => ({ ...s, [k]: !s[k] }));
+    const newValue = !cells[k];
+    console.log(`Toggling ${kind} for ${item} to ${newValue}`);
+    setCells((s) => ({ ...s, [k]: newValue }));
+    
+    // Find the item ID for database sync
+    const dish = dishes.find(d => d.id === dishId);
+    const itemMetaKey = rowKey(dishId, item);
+    const itemId = itemMeta[itemMetaKey]?.id;
+    
+    if (itemId) {
+      console.log(`Syncing ${kind} state to database for item ${itemId}`);
+      await syncRowState({
+        dish_id: dishId,
+        item_id: itemId,
+        [kind === 'on' ? 'on_hand' : 'prep']: newValue,
+      });
+    } else {
+      console.log(`No item ID found for ${item} in dish ${dishId}`);
+    }
   };
-  const toggleRow = (dishId: string, item: string) => {
+  
+  const toggleRow = async (dishId: string, item: string) => {
     const k = rowKey(dishId, item);
-    setRowHi((s) => ({ ...s, [k]: !s[k] }));
+    const newValue = !rowHi[k];
+    console.log(`Toggling highlight for ${item} to ${newValue}`);
+    setRowHi((s) => ({ ...s, [k]: newValue }));
+    
+    // Find the item ID for database sync
+    const itemMetaKey = rowKey(dishId, item);
+    const itemId = itemMeta[itemMetaKey]?.id;
+    
+    if (itemId) {
+      console.log(`Syncing highlight state to database for item ${itemId}`);
+      await syncRowState({
+        dish_id: dishId,
+        item_id: itemId,
+        highlighted: newValue,
+      });
+    } else {
+      console.log(`No item ID found for ${item} in dish ${dishId}`);
+    }
   };
-  const updateNote = (dishId: string, item: string, val: string) => {
+  
+  const updateNote = async (dishId: string, item: string, val: string) => {
     const k = rowKey(dishId, item);
+    console.log(`Updating note for ${item} to: ${val}`);
     setNotes((n) => ({ ...n, [k]: val }));
+    
+    // Find the item ID for database sync
+    const itemMetaKey = rowKey(dishId, item);
+    const itemId = itemMeta[itemMetaKey]?.id;
+    
+    if (itemId) {
+      console.log(`Syncing note to database for item ${itemId}`);
+      await syncRowState({
+        dish_id: dishId,
+        item_id: itemId,
+        notes: val,
+      });
+    } else {
+      console.log(`No item ID found for ${item} in dish ${dishId}`);
+    }
   };
 
   const openNotes = (dishId: string, item: string) => {
@@ -322,9 +442,9 @@ export default function App() {
     setDraftNote(notes[k] || '');
   };
 
-  const saveNote = () => {
+  const saveNote = async () => {
     if (!notesModal) return;
-    updateNote(notesModal.dishId, notesModal.item, draftNote);
+    await updateNote(notesModal.dishId, notesModal.item, draftNote);
     setNotesModal(null);
   };
 
@@ -443,6 +563,15 @@ export default function App() {
           // Add new item
           const newItemRow = await insertItem(dishId, item, i);
           setItemMeta((m) => ({ ...m, [k]: { id: newItemRow.id, recipe: null } }));
+          // Create row_state entry for the new item
+          await syncRowState({
+            dish_id: dishId,
+            item_id: newItemRow.id,
+            notes: '',
+            on_hand: false,
+            prep: false,
+            highlighted: false,
+          });
         }
       }
 

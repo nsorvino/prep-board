@@ -103,7 +103,98 @@ export async function upsertRowState(params: {
   return data as RowStateRow;
 }
 
-export function subscribeToChanges(onDishChange: (payload: any) => void, onItemChange: (payload: any) => void) {
+export async function initializeRowStates() {
+  try {
+    // Get all items
+    const { data: allItems, error: itemsError } = await sb
+      .from('items')
+      .select('id, dish_id');
+    
+    if (itemsError) throw itemsError;
+    
+    // Get existing row_state entries
+    const { data: existingStates, error: statesError } = await sb
+      .from('row_state')
+      .select('item_id');
+    
+    if (statesError) throw statesError;
+    
+    const existingItemIds = new Set(existingStates?.map(s => s.item_id) || []);
+    
+    // Find items that don't have row_state entries
+    const itemsToCreate = allItems?.filter(item => !existingItemIds.has(item.id)) || [];
+    
+    if (itemsToCreate.length > 0) {
+      console.log(`Creating row_state entries for ${itemsToCreate.length} items`);
+      
+      // Insert default row_state entries for items that don't have them
+      const defaultStates = itemsToCreate.map(item => ({
+        dish_id: item.dish_id,
+        item_id: item.id,
+        state: '',
+        note: '',
+        starred: false,
+        updated_at: new Date().toISOString(),
+      }));
+      
+      const { error: insertError } = await sb
+        .from('row_state')
+        .insert(defaultStates);
+        
+      if (insertError) throw insertError;
+      
+      console.log(`Successfully created ${defaultStates.length} row_state entries`);
+    } else {
+      console.log('All items already have row_state entries');
+    }
+  } catch (e) {
+    console.error('Failed to initialize row states:', e);
+  }
+}
+
+export async function syncRowState(params: {
+  dish_id: string;
+  item_id: string;
+  notes?: string;
+  on_hand?: boolean;
+  prep?: boolean;
+  highlighted?: boolean;
+}) {
+  try {
+    console.log('syncRowState called with:', params);
+    
+    const updateData: any = {
+      dish_id: params.dish_id,
+      item_id: params.item_id,
+      updated_at: new Date().toISOString(),
+    };
+    
+    if (params.notes !== undefined) updateData.note = params.notes;
+    if (params.on_hand !== undefined) updateData.state = params.on_hand ? 'on' : '';
+    if (params.prep !== undefined) updateData.state = params.prep ? 'prep' : '';
+    if (params.highlighted !== undefined) updateData.starred = params.highlighted;
+    
+    console.log('Updating row_state with:', updateData);
+    
+    await upsertRowState({
+      dish_id: params.dish_id,
+      item_id: params.item_id,
+      note: params.notes,
+      state: params.on_hand ? 'on' : params.prep ? 'prep' : '',
+      starred: params.highlighted,
+    });
+    
+    console.log('Row state synced successfully');
+  } catch (e) {
+    console.error('Failed to sync row state:', e);
+  }
+}
+
+export function subscribeToChanges(
+  onDishChange: (payload: any) => void, 
+  onItemChange: (payload: any) => void,
+  onRowStateChange?: (payload: any) => void
+) {
   const dishesChannel = sb
     .channel('dishes_changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'dishes' }, onDishChange)
@@ -114,8 +205,17 @@ export function subscribeToChanges(onDishChange: (payload: any) => void, onItemC
     .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, onItemChange)
     .subscribe();
 
+  const channels = [dishesChannel, itemsChannel];
+
+  if (onRowStateChange) {
+    const rowStateChannel = sb
+      .channel('row_state_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'row_state' }, onRowStateChange)
+      .subscribe();
+    channels.push(rowStateChannel);
+  }
+
   return () => {
-    sb.removeChannel(dishesChannel);
-    sb.removeChannel(itemsChannel);
+    channels.forEach(channel => sb.removeChannel(channel));
   };
 }
